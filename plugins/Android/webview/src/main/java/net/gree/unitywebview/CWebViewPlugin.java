@@ -472,24 +472,46 @@ public class CWebViewPlugin extends Fragment {
                 // cf. https://github.com/googlesamples/android-PermissionRequest/blob/eff1d21f0b9c91d67c7f2a2303b591447e61e942/Application/src/main/java/com/example/android/permissionrequest/PermissionRequestFragment.java#L148-L161
                 @Override
                 public void onPermissionRequest(final PermissionRequest request) {
-                    final String[] requestedResources = request.getResources();
-                    for (String r : requestedResources) {
-                        if ((r.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE) && mAllowVideoCapture)
-                            || (r.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE) && mAllowAudioCapture)
-                            || r.equals(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID)) {
-                            request.grant(requestedResources);
-                            // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            //     a.runOnUiThread(new Runnable() {public void run() {
-                            //         final String[] permissions = {
-                            //             "android.permission.CAMERA",
-                            //             "android.permission.RECORD_AUDIO",
-                            //         };
-                            //         ActivityCompat.requestPermissions(a, permissions, 0);
-                            //     }});
-                            // }
-                            break;
+                    final Activity activity = a; // assuming 'a' is your Unity activity reference
+
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            // Check if camera permission is granted
+                            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
+                                    != PackageManager.PERMISSION_GRANTED) {
+                                // Request camera permission from the user
+                                ActivityCompat.requestPermissions(activity,
+                                        new String[]{Manifest.permission.CAMERA},
+                                        1001);
+                                // Don’t grant WebView access yet — wait for user input
+                                Log.d("WebView", "Requested CAMERA permission from user.");
+                                return;
+                            }
+
+                            // Optional: check mic permission if needed
+                            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO)
+                                    != PackageManager.PERMISSION_GRANTED) {
+                                ActivityCompat.requestPermissions(activity,
+                                        new String[]{Manifest.permission.RECORD_AUDIO},
+                                        1002);
+                                Log.d("WebView", "Requested MICROPHONE permission from user.");
+                                return;
+                            }
+
+                            // If permissions already granted, allow WebView to use camera/mic
+                            final String[] requestedResources = request.getResources();
+                            for (String r : requestedResources) {
+                                if ((r.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE) && mAllowVideoCapture)
+                                        || (r.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE) && mAllowAudioCapture)
+                                        || r.equals(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID)) {
+                                    request.grant(requestedResources);
+                                    Log.d("WebView", "Granted WebView camera/mic access.");
+                                    break;
+                                }
+                            }
                         }
-                    }
+                    });
                 }
 
                 @Override
